@@ -1,0 +1,339 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>फल पकड़ो</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Rozha+One&display=swap">
+<style>
+/* Layout: one centred column; stat strip above a canvas stage; start and game-over card overlays the stage. Single night-orchard look by design. */
+:root {
+  color-scheme: dark;
+  --bg: #0b1e25;
+  --panel: #11303a;
+  --fg: #eaf6f4;
+  --muted: #9dbbbb;
+  --line: #24505c;
+  --accent: #ffb347;
+  --accent-fg: #2b1800;
+  --danger: #ff7a6e;
+  --font-display: "Rozha One", "Noto Serif Devanagari", Georgia, serif;
+  --font-body: "Hind", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.45;
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overscroll-behavior: none;
+}
+.app { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: 1.2; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.langs { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.lg { min-height: 40px; padding: 0 14px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.lg[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; min-width: 0; }
+.stat .k { font-size: 13px; color: var(--muted); }
+.stat .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.lives { display: flex; gap: 6px; align-items: center; height: 29px; }
+.life { width: 18px; height: 18px; border-radius: 50%; background: var(--danger); }
+.life.off { background: transparent; border: 2px solid var(--line); }
+
+.stage { position: relative; margin: 0 auto; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #0f2a33; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; touch-action: none; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(6, 18, 22, 0.72); }
+.overlay[hidden] { display: none; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.2; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); font-size: 16px; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 15px; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.btn { min-height: 54px; border-radius: 14px; border: 0; background: var(--accent); color: var(--accent-fg); font: inherit; font-weight: 700; font-size: 19px; cursor: pointer; }
+.btn:active { transform: translateY(1px); }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.final { font-family: var(--font-display); font-size: 40px; line-height: 1.1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tip { color: var(--muted); font-size: 14px; text-align: center; }
+</style>
+
+<div class="app">
+  <div class="top"><h1 data-i18n="title">फल पकड़ो</h1><div class="langs" role="group" aria-label="भाषा / Language"><button type="button" class="lg" data-lang="hi">हिंदी</button><button type="button" class="lg" data-lang="en">English</button></div></div>
+  <div class="stats" aria-live="off">
+    <div class="stat"><div class="k" data-i18n="score">अंक</div><div class="v" id="score">0</div></div>
+    <div class="stat"><div class="k" data-i18n="best">सबसे ज़्यादा</div><div class="v" id="best">0</div></div>
+    <div class="stat"><div class="k" data-i18n="lives">जान</div><div class="lives" id="lives" role="img" aria-label="3 जान बाकी"></div></div>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="खेल का मैदान"></canvas>
+    <div class="overlay" id="startOv">
+      <div class="card">
+        <h2 data-i18n="startTitle">टोकरी से फल पकड़ो</h2>
+        <p data-i18n="startP1">उँगली से टोकरी खिसकाइए। फल पकड़ने पर अंक मिलते हैं।</p>
+        <ul class="legend">
+          <li><span class="dot" style="background:#f5a623"></span><span><span data-i18n="mango">आम</span> · 10</span></li>
+          <li><span class="dot" style="background:#e0463c"></span><span><span data-i18n="apple">सेब</span> · 10</span></li>
+          <li><span class="dot" style="background:#8a4bb8"></span><span><span data-i18n="jamun">जामुन</span> · 20</span></li>
+          <li><span class="dot" style="background:#b8d92b"></span><span><span data-i18n="nimbu">नींबू</span> · 5</span></li>
+        </ul>
+        <p data-i18n="startP2">पत्थर से बचिए। पत्थर टोकरी में आया या कोई फल गिर गया तो एक जान जाएगी।</p>
+        <button class="btn" id="startBtn" type="button" data-i18n="play">खेलना शुरू करें</button>
+      </div>
+    </div>
+    <div class="overlay" id="overOv" hidden>
+      <div class="card">
+        <h2 data-i18n="over">खेल खत्म</h2>
+        <div><div class="tip" style="text-align:left" data-i18n="yourScore">आपके अंक</div><div class="final" id="finalScore">0</div></div>
+        <p id="bestMsg"></p>
+        <button class="btn" id="againBtn" type="button" data-i18n="again">फिर से खेलें</button>
+      </div>
+    </div>
+  </div>
+  <p class="tip" data-i18n="tip">कंप्यूटर पर तीर वाली बाएँ-दाएँ कुंजियाँ भी चलती हैं।</p>
+</div>
+
+<script>
+(function () {
+  var W = 400, H = 500, KEY = 'phal-pakdo-best';
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+  var elScore = document.getElementById('score'), elBest = document.getElementById('best'), elLives = document.getElementById('lives');
+  var startOv = document.getElementById('startOv'), overOv = document.getElementById('overOv');
+
+  var best = 0;
+  try { best = parseInt(localStorage.getItem(KEY), 10) || 0; } catch (e) {}
+  elBest.textContent = best;
+
+  var I18N = {
+    hi: {
+      title: 'फल पकड़ो', score: 'अंक', best: 'सबसे ज़्यादा', lives: 'जान',
+      startTitle: 'टोकरी से फल पकड़ो', startP1: 'उँगली से टोकरी खिसकाइए। फल पकड़ने पर अंक मिलते हैं।',
+      mango: 'आम', apple: 'सेब', jamun: 'जामुन', nimbu: 'नींबू',
+      startP2: 'पत्थर से बचिए। पत्थर टोकरी में आया या कोई फल गिर गया तो एक जान जाएगी।',
+      play: 'खेलना शुरू करें', over: 'खेल खत्म', yourScore: 'आपके अंक', again: 'फिर से खेलें',
+      tip: 'कंप्यूटर पर तीर वाली बाएँ-दाएँ कुंजियाँ भी चलती हैं।',
+      canvas: 'खेल का मैदान', livesLeft: function (n) { return n + ' जान बाकी'; },
+      lostLife: 'जान गई', dropped: 'गिर गया',
+      newBest: 'यह आपका नया सबसे ज़्यादा स्कोर है।', bestIs: function (n) { return 'सबसे ज़्यादा स्कोर: ' + n; }
+    },
+    en: {
+      title: 'Catch the Fruit', score: 'Score', best: 'Best', lives: 'Lives',
+      startTitle: 'Catch fruit in the basket', startP1: 'Slide your finger to move the basket. Every fruit you catch earns points.',
+      mango: 'Mango', apple: 'Apple', jamun: 'Jamun', nimbu: 'Lemon',
+      startP2: 'Dodge the rocks. You lose a life if a rock lands in the basket or a fruit hits the ground.',
+      play: 'Start playing', over: 'Game over', yourScore: 'Your score', again: 'Play again',
+      tip: 'On a computer, the left and right arrow keys work too.',
+      canvas: 'Game area', livesLeft: function (n) { return n + (n === 1 ? ' life left' : ' lives left'); },
+      lostLife: 'Life lost', dropped: 'Dropped',
+      newBest: 'That is your new best score.', bestIs: function (n) { return 'Best score: ' + n; }
+    }
+  };
+  var LANG_KEY = 'phal-pakdo-lang', lang = 'hi';
+  try { var sl = localStorage.getItem(LANG_KEY); if (sl === 'hi' || sl === 'en') lang = sl; } catch (e) {}
+  function t(k, a) { var v = I18N[lang][k]; return typeof v === 'function' ? v(a) : v; }
+  function applyLang() {
+    document.documentElement.lang = lang;
+    var nodes = document.querySelectorAll('[data-i18n]');
+    for (var i = 0; i < nodes.length; i++) nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+    var bs = document.querySelectorAll('.lg');
+    for (var j = 0; j < bs.length; j++) bs[j].setAttribute('aria-pressed', bs[j].getAttribute('data-lang') === lang ? 'true' : 'false');
+    cv.setAttribute('aria-label', t('canvas'));
+    if (typeof lives === 'number') elLives.setAttribute('aria-label', t('livesLeft', lives));
+    var bm = document.getElementById('bestMsg');
+    if (bm && bm.getAttribute('data-nb') !== null) bm.textContent = bm.getAttribute('data-nb') === '1' ? t('newBest') : t('bestIs', best);
+  }
+
+  var TYPES = [
+    { n: 'mango', c: '#f5a623', hi: '#ffd37a', pts: 10, r: 16, v: 1, w: 3 },
+    { n: 'apple', c: '#e0463c', hi: '#ff958c', pts: 10, r: 16, v: 1, w: 3 },
+    { n: 'jamun', c: '#8a4bb8', hi: '#c79bea', pts: 20, r: 11, v: 1.35, w: 2 },
+    { n: 'nimbu', c: '#b8d92b', hi: '#e6f58a', pts: 5, r: 12, v: 0.9, w: 3 }
+  ];
+
+  var state = 'ready', score, lives, items, fx, basket, targetX, spawnT, flash, last, keys = { l: false, r: false };
+
+  function sizeCanvas() {
+    var cw = Math.min(stage.parentNode.clientWidth, 520);
+    var maxH = Math.max(320, window.innerHeight - 190);
+    var w = Math.min(cw, maxH * (W / H));
+    var h = w * (H / W), dpr = window.devicePixelRatio || 1;
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    stage.style.width = w + 'px'; stage.style.height = h + 'px';
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+    draw();
+  }
+
+  function renderLives() {
+    var h = '';
+    for (var i = 0; i < 3; i++) h += '<span class="life' + (i < lives ? '' : ' off') + '"></span>';
+    elLives.innerHTML = h;
+    elLives.setAttribute('aria-label', t('livesLeft', lives));
+  }
+
+  function reset() {
+    score = 0; lives = 3; items = []; fx = []; spawnT = 0.5; flash = 0;
+    basket = { x: W / 2, y: H - 44, w: 88, h: 32 }; targetX = basket.x;
+    elScore.textContent = 0; renderLives();
+  }
+
+  function pickType() {
+    var tot = 0, i;
+    for (i = 0; i < TYPES.length; i++) tot += TYPES[i].w;
+    var r = Math.random() * tot;
+    for (i = 0; i < TYPES.length; i++) { r -= TYPES[i].w; if (r <= 0) return TYPES[i]; }
+    return TYPES[0];
+  }
+
+  function spawn() {
+    var rock = Math.random() < Math.min(0.3, 0.1 + score / 700);
+    var t = rock ? { n: 'rock', c: '#8b969c', hi: '#c3cbcf', pts: 0, r: 16, v: 1.05, bad: true } : pickType();
+    var base = Math.min(340, 130 + score * 0.45);
+    items.push({ t: t, x: t.r + 6 + Math.random() * (W - 2 * t.r - 12), y: -t.r, vy: base * t.v * (0.9 + Math.random() * 0.25), rot: Math.random() * 6 });
+  }
+
+  function loseLife() {
+    lives--; renderLives(); flash = 0.25;
+    if (lives <= 0) endGame();
+  }
+
+  function endGame() {
+    state = 'over';
+    var isBest = score > best;
+    if (isBest) { best = score; elBest.textContent = best; try { localStorage.setItem(KEY, String(best)); } catch (e) {} }
+    document.getElementById('finalScore').textContent = score;
+    var bm = document.getElementById('bestMsg'), nb = isBest && score > 0;
+    bm.setAttribute('data-nb', nb ? '1' : '0');
+    bm.textContent = nb ? t('newBest') : t('bestIs', best);
+    overOv.hidden = false;
+    document.getElementById('againBtn').focus();
+  }
+
+  function start() {
+    reset(); state = 'playing';
+    startOv.hidden = true; overOv.hidden = true;
+    last = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt) {
+    var sp = 420;
+    if (keys.l) targetX -= sp * dt;
+    if (keys.r) targetX += sp * dt;
+    targetX = Math.max(basket.w / 2, Math.min(W - basket.w / 2, targetX));
+    basket.x += (targetX - basket.x) * Math.min(1, dt * 18);
+
+    spawnT -= dt;
+    if (spawnT <= 0) { spawn(); spawnT = Math.max(0.42, 1.05 - score / 450) * (0.8 + Math.random() * 0.4); }
+
+    var top = basket.y - basket.h / 2;
+    for (var i = items.length - 1; i >= 0; i--) {
+      var it = items[i];
+      it.y += it.vy * dt; it.rot += dt * 2;
+      var bottom = it.y + it.t.r;
+      if (bottom >= top && it.y < basket.y + 4 && Math.abs(it.x - basket.x) < basket.w / 2 + it.t.r * 0.4) {
+        items.splice(i, 1);
+        if (it.t.bad) { fx.push({ x: it.x, y: top - 6, txt: t('lostLife'), life: 0.8, bad: true }); loseLife(); }
+        else {
+          score += it.t.pts; elScore.textContent = score;
+          fx.push({ x: it.x, y: top - 6, txt: '+' + it.t.pts, life: 0.7 });
+        }
+        if (state !== 'playing') return;
+      } else if (it.y - it.t.r > H) {
+        items.splice(i, 1);
+        if (!it.t.bad) { fx.push({ x: it.x, y: H - 16, txt: t('dropped'), life: 0.8, bad: true }); loseLife(); if (state !== 'playing') return; }
+      }
+    }
+    for (var j = fx.length - 1; j >= 0; j--) { fx[j].life -= dt; fx[j].y -= 40 * dt; if (fx[j].life <= 0) fx.splice(j, 1); }
+    if (flash > 0) flash -= dt;
+  }
+
+  function drawItem(it) {
+    var t = it.t, r = t.r;
+    ctx.save(); ctx.translate(it.x, it.y);
+    if (t.bad) {
+      ctx.rotate(it.rot);
+      ctx.fillStyle = t.c; ctx.beginPath();
+      for (var k = 0; k < 7; k++) { var a = k / 7 * Math.PI * 2, rr = r * (k % 2 ? 0.86 : 1); ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = t.hi; ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.3, r * 0.28, 0, 7); ctx.fill();
+    } else {
+      ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+      ctx.fillStyle = t.hi; ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.35, r * 0.28, 0, 7); ctx.fill();
+      if (t.n === 'mango' || t.n === 'apple') {
+        ctx.fillStyle = '#4fae4a'; ctx.beginPath(); ctx.ellipse(r * 0.35, -r * 0.95, r * 0.4, r * 0.2, -0.5, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#5c4a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -r * 0.8); ctx.lineTo(0, -r * 1.1); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0f2a33'); g.addColorStop(1, '#173f45');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (var s = 0; s < 18; s++) { ctx.beginPath(); ctx.arc((s * 97) % W, (s * 53) % (H - 120), 1.6, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#10333a'; ctx.fillRect(0, H - 22, W, 22);
+    if (!items) return;
+    items.forEach(drawItem);
+    // basket
+    var b = basket, x = b.x - b.w / 2, y = b.y - b.h / 2;
+    ctx.fillStyle = flash > 0 ? '#ff7a6e' : '#c98a3d';
+    ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + b.w + 4, y); ctx.lineTo(x + b.w - 8, y + b.h); ctx.lineTo(x + 8, y + b.h); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,32,8,0.55)'; ctx.lineWidth = 2;
+    for (var q = 1; q < 4; q++) { ctx.beginPath(); ctx.moveTo(x + 8 + q * (b.w - 16) / 4, y + 3); ctx.lineTo(x + 12 + q * (b.w - 24) / 4, y + b.h - 2); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(x, y + b.h * 0.45); ctx.lineTo(x + b.w, y + b.h * 0.45); ctx.stroke();
+    ctx.fillStyle = '#e3a655'; ctx.fillRect(x - 6, y - 4, b.w + 12, 6);
+    ctx.font = '700 20px Hind, "Noto Sans Devanagari", sans-serif'; ctx.textAlign = 'center';
+    fx.forEach(function (f) { ctx.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6)); ctx.fillStyle = f.bad ? '#ff8f86' : '#ffd37a'; ctx.fillText(f.txt, Math.max(30, Math.min(W - 30, f.x)), f.y); });
+    ctx.globalAlpha = 1;
+  }
+
+  function loop(now) {
+    if (state !== 'playing') return;
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    update(dt);
+    draw();
+    if (state === 'playing') requestAnimationFrame(loop);
+    else draw();
+  }
+
+  function pointerX(ev) {
+    var rect = cv.getBoundingClientRect();
+    return (ev.clientX - rect.left) / rect.width * W;
+  }
+  cv.addEventListener('pointerdown', function (ev) { if (state === 'playing') { targetX = pointerX(ev); try { cv.setPointerCapture(ev.pointerId); } catch (e) {} } });
+  cv.addEventListener('pointermove', function (ev) { if (state === 'playing' && (ev.pointerType !== 'mouse' || ev.buttons || true)) targetX = pointerX(ev); });
+  window.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowLeft' || ev.key === 'a') { keys.l = true; ev.preventDefault(); }
+    if (ev.key === 'ArrowRight' || ev.key === 'd') { keys.r = true; ev.preventDefault(); }
+  });
+  window.addEventListener('keyup', function (ev) {
+    if (ev.key === 'ArrowLeft' || ev.key === 'a') keys.l = false;
+    if (ev.key === 'ArrowRight' || ev.key === 'd') keys.r = false;
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && state === 'playing') { last = performance.now(); } });
+  document.getElementById('startBtn').addEventListener('click', start);
+  document.getElementById('againBtn').addEventListener('click', start);
+  window.addEventListener('resize', sizeCanvas);
+
+  document.querySelector('.langs').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.lg');
+    if (!b) return;
+    lang = b.getAttribute('data-lang');
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+    applyLang();
+  });
+
+  reset(); applyLang(); sizeCanvas();
+})();
+</script>
+
+</body></html>
